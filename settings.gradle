@@ -1,2 +1,3 @@
 rootProject.name = 'multidata-classification'
+include 'server'
 
