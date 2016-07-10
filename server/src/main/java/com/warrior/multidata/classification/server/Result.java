@@ -5,17 +5,11 @@ package com.warrior.multidata.classification.server;
  */
 public class Result {
 
-    public final String id;
     public final String gender;
     public final String relationship;
 
-    public Result(String id, String gender, String relationship) {
-        this.id = id;
+    public Result(String gender, String relationship) {
         this.gender = gender;
         this.relationship = relationship;
-    }
-
-    public static Result defaultResult(String id) {
-        return new Result(id, "female", "single");
     }
 }

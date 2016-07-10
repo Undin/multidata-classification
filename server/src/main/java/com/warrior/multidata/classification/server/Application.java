@@ -5,7 +5,12 @@ import org.apache.log4j.Logger;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import weka.classifiers.Classifier;
+import weka.core.Attribute;
+import weka.core.Instances;
 import weka.core.SerializationHelper;
+import weka.core.converters.ConverterUtils;
+
+import java.io.InputStream;
 
 /**
  * Created by warrior on 03/07/16.
@@ -29,13 +34,34 @@ public class Application {
             .desc("path to built relationship classifier model")
             .build();
 
-    static {
-        OPTIONS.addOption(GENDER);
-        OPTIONS.addOption(RELATIONSHIP);
-    }
+    private static Instances genderInstances;
+    private static Instances relationshipInstances;
 
     private static Classifier genderClassifier;
     private static Classifier relationshipClassifier;
+
+    static {
+        OPTIONS.addOption(GENDER);
+        OPTIONS.addOption(RELATIONSHIP);
+
+        InputStream stream = Application.class.getClassLoader().getResourceAsStream("attrs.arff");
+        try {
+            Instances instances = ConverterUtils.DataSource.read(stream);
+            Attribute genderAttr = instances.attribute("gender");
+            Attribute relationshipAttr = instances.attribute("relationship");
+
+            genderInstances = new Instances(instances);
+            relationshipInstances = new Instances(instances);
+
+            genderInstances.setClassIndex(genderAttr.index());
+            genderInstances.deleteAttributeAt(relationshipAttr.index());
+            relationshipInstances.setClassIndex(relationshipAttr.index());
+            relationshipInstances.deleteAttributeAt(genderAttr.index());
+        } catch (Exception e) {
+            LOGGER.fatal(e);
+            System.exit(1);
+        }
+    }
 
     public static void main(String[] args) {
         CommandLineParser parser = new DefaultParser();
@@ -69,5 +95,13 @@ public class Application {
 
     public static Classifier getRelationshipClassifier() {
         return relationshipClassifier;
+    }
+
+    public static Instances getGenderInstances() {
+        return genderInstances;
+    }
+
+    public static Instances getRelationshipInstances() {
+        return relationshipInstances;
     }
 }
