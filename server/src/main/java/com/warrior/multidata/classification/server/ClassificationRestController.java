@@ -1,5 +1,6 @@
 package com.warrior.multidata.classification.server;
 
+import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,8 +21,11 @@ import static com.warrior.multidata.classification.server.Application.*;
 @RestController
 public class ClassificationRestController {
 
+    private static final Logger LOGGER = Logger.getLogger(ClassificationRestController.class);
+
     @RequestMapping(path = "/classification", method = RequestMethod.POST)
     public ResponseEntity<Result> classification(@RequestBody String[] values) {
+        LOGGER.debug("classification request");
         if (values.length != getGenderInstances().numAttributes() - 1) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
