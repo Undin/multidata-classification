@@ -212,4 +212,6 @@ private fun removeMissingValues(): RemoveWithValues {
 private fun forestSize(c: Class, info: DatasetInfo): Int = when (c) {
     Class.GENDER -> info.forestSizeGender
     Class.RELATIONSHIP -> info.forestSizeRelationship
+    // todo: temporary
+    else -> 100
 }

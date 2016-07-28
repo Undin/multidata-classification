@@ -1,9 +1,12 @@
 package com.warrior.multidata.classification.model
 
+import com.warrior.multidata.classification.model.AttributeMapper.*
 import weka.core.Attribute
 import weka.core.DenseInstance
 import weka.core.Instances
 import weka.core.Utils
+import weka.filters.Filter
+import weka.filters.unsupervised.attribute.Remove
 import java.util.*
 
 /**
@@ -19,9 +22,15 @@ private fun generateFullDatasets() {
     val groundTruth = load("featuresSingapore/SingaporeGroundTruth.csv")
 
     val idAttr = groundTruth.attribute("row ID")
-    val genderAttr = groundTruth.attribute(GENDER_ATTR)
-    val relationshipAttr = groundTruth.attribute(RELATIONSHIP_ATTR)
-    val binaryRelationshipAttr = Attribute(RELATIONSHIP_ATTR, listOf(SINGLE, IN_A_RELATIONSHIP))
+    val attrMappers = listOf(
+            AgeGroup(groundTruth),
+            Gender(groundTruth),
+            Relationship(groundTruth),
+            EducationLevelBinary(groundTruth),
+            EducationLevelTernary(groundTruth),
+            Occupation(groundTruth)
+    )
+
 
     val infoList = loadDatasets()
 
@@ -35,8 +44,9 @@ private fun generateFullDatasets() {
         }
     }
 
-    attrs += genderAttr.clone()
-    attrs += binaryRelationshipAttr
+    for (mapper in attrMappers) {
+        attrs += mapper.getNewAttr()
+    }
 
     val trainInstances = Instances("fullTrain", ArrayList(attrs), groundTruth.size - testIds.size)
     val testInstances = Instances("fullTest", ArrayList(attrs), testIds.size)
@@ -58,13 +68,13 @@ private fun generateFullDatasets() {
         }
         val hasValues = values.any { it != Utils.missingValue() }
         if (hasValues) {
-            values += classesInst.value(genderAttr)
-            values += if (classesInst.isMissing(relationshipAttr)) {
-                Utils.missingValue()
-            } else if (classesInst.stringValue(relationshipAttr) == SINGLE) {
-                binaryRelationshipAttr.indexOfValue(SINGLE).toDouble()
-            } else {
-                binaryRelationshipAttr.indexOfValue(IN_A_RELATIONSHIP).toDouble()
+            for (mapper in attrMappers) {
+                val value = classesInst.value(mapper.attr)
+                values += if (Utils.isMissingValue(value)) {
+                    value
+                } else {
+                    mapper.map(value)
+                }
             }
 
             val mergedInstance = DenseInstance(1.0, values.toDoubleArray())
@@ -76,8 +86,10 @@ private fun generateFullDatasets() {
         }
     }
 
-    saveToDatasetFolder(trainInstances)
-    saveToDatasetFolder(testInstances)
+    println("--- train ---")
+    saveToDatasetFolder(trainInstances, attrMappers)
+    println("--- test ---")
+    saveToDatasetFolder(testInstances, attrMappers)
 }
 
 private fun loadDatasets(): List<InstancesInfo> = listOf(
@@ -89,20 +101,18 @@ private fun loadDatasets(): List<InstancesInfo> = listOf(
         InstancesInfo(DatasetInfo.INSTAGRAM.datasetName, load("featuresSingapore/Instagram/imageConceptsFeatures.csv"))
 )
 
-private fun saveToDatasetFolder(instances: Instances) {
+private fun saveToDatasetFolder(instances: Instances, mappers: List<AttributeMapper>) {
     val relationName = instances.relationName()
     save(instances, "$DATASET_FOLDER/$relationName.arff")
 
-    val relationshipAttr = instances.attribute(RELATIONSHIP_ATTR)
-    val genderAttr = instances.attribute(GENDER_ATTR)
-
-    val genderInstances = Instances(instances)
-    genderInstances.deleteWithMissing(genderAttr)
-    genderInstances.deleteAttributeAt(relationshipAttr.index())
-    save(genderInstances, "$DATASET_FOLDER/${relationName}Gender.arff")
-
-    val relationshipInstances = Instances(instances)
-    relationshipInstances.deleteWithMissing(relationshipAttr)
-    relationshipInstances.deleteAttributeAt(genderAttr.index())
-    save(relationshipInstances, "$DATASET_FOLDER/${relationName}Relationship.arff")
+    for ((i, mapper) in mappers.withIndex()) {
+        val remove = Remove()
+        val indices = ((0 until mappers.size) - i).map { v -> v + instances.numAttributes() - mappers.size }
+        remove.setAttributeIndicesArray(indices.toIntArray())
+        remove.setInputFormat(instances)
+        val filtered = Filter.useFilter(instances, remove)
+        filtered.deleteWithMissing(filtered.numAttributes() - 1)
+        println("${mapper.name}: ${filtered.size}")
+        save(filtered, "$DATASET_FOLDER/$relationName${mapper.name}.arff")
+    }
 }
