@@ -2,6 +2,7 @@ package com.warrior.multidata.classification.model
 
 import weka.core.Attribute
 import weka.core.Instances
+import weka.core.Utils
 
 /**
  * Created by warrior on 29/07/16.
@@ -50,5 +51,32 @@ sealed class AttributeMapper(clazz: Class, instances: Instances) {
             return 2.0
         }
     }
-    class Occupation(instances: Instances) : AttributeMapper(Class.OCCUPATION, instances)
+
+    class Occupation(instances: Instances) : AttributeMapper(Class.OCCUPATION, instances) {
+
+        private val newAttr = Attribute("occupation", listOf(
+                "archetecture and engineering",
+                "protective service",
+                "food preparation and service related",
+                "management",
+                "arts, design, entertainment, sports, and media",
+                "office and administrative support",
+                "personal care and service",
+                "sales and related",
+                "legal",
+                "transportation and material moving",
+                "production",
+                "construction and extraction",
+                "education, training, and library",
+                "business and financial operations"
+        ))
+
+        override fun getNewAttr(): Attribute = newAttr
+
+        override fun map(value: Double): Double {
+            val originalValue = attr.value(value.toInt())
+            val index = newAttr.indexOfValue(originalValue)
+            return if (index == -1) { Utils.missingValue() } else { index.toDouble() }
+        }
+    }
 }
